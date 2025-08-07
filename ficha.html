@@ -66,8 +66,8 @@
 
     <script>
         // --- CONFIGURACIÓN ---
-        // PEGA AQUÍ EL ENLACE .CSV QUE OBTUVISTE DE GOOGLE SHEETS
-        const GOOGLE_SHEET_URL = 'AQUI_VA_TU_ENLACE_CSV_DE_GOOGLE_SHEETS';
+        // Enlace a tu Google Sheet publicado como CSV
+        const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-dldYiOlQ4znCOEb7gq1fi70lDOvAypidoaKGFjg0JBAdrWQVkyP3QLPX-YpXqdGLI8XsaWIz3ry6/pub?gid=0&single=true&output=csv';
 
         // --- LÓGICA DE LA PÁGINA ---
         document.addEventListener('DOMContentLoaded', async () => {
@@ -77,10 +77,6 @@
             const errorMessageP = document.getElementById('errorMessage');
 
             try {
-                if (GOOGLE_SHEET_URL === 'AQUI_VA_TU_ENLACE_CSV_DE_GOOGLE_SHEETS') {
-                    throw new Error('Por favor, configura la URL de Google Sheets en el archivo ficha.html.');
-                }
-
                 const params = new URLSearchParams(window.location.search);
                 const id = params.get('id');
 
