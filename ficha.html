@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ficha de Silo Bolsa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div id="loading" class="text-center">
+        <p class="text-xl text-gray-600">Cargando datos del silo bolsa...</p>
+    </div>
+
+    <div id="card" class="hidden w-full max-w-md bg-white rounded-2xl shadow-lg p-6 md:p-8">
+        <div class="text-center border-b-2 border-gray-100 pb-4 mb-4">
+            <h1 class="text-2xl font-bold text-gray-800">Ficha de Identidad</h1>
+            <p id="siloId" class="text-5xl font-bold text-green-600 mt-2"></p>
+        </div>
+        
+        <div class="space-y-4 text-lg">
+            <div class="flex justify-between">
+                <span class="font-bold text-gray-600">Fecha y Hora de Carga:</span>
+                <span id="fechaCarga" class="font-mono text-gray-800 text-right"></span>
+            </div>
+            <div class="flex justify-between">
+                <span class="font-bold text-gray-600">Fecha y Hora de Cierre:</span>
+                <span id="fechaCierre" class="font-mono text-gray-800 text-right"></span>
+            </div>
+            <div class="flex justify-between">
+                <span class="font-bold text-gray-600">Duración de la Carga:</span>
+                <span id="duracionCarga" class="font-mono text-gray-800 text-right"></span>
+            </div>
+            <hr>
+            <div class="flex justify-between items-center bg-yellow-100 p-3 rounded-lg">
+                <span class="font-bold text-yellow-800">Días Almacenado (Hoy):</span>
+                <span id="diasAlmacenado" class="font-mono text-2xl font-bold text-yellow-900"></span>
+            </div>
+            <hr>
+            <div class="flex justify-between">
+                <span class="font-bold text-gray-600">Humedad (%):</span>
+                <span id="humedad" class="font-mono text-gray-800 text-right"></span>
+            </div>
+            <div class="flex justify-between">
+                <span class="font-bold text-gray-600">Temperatura (°C):</span>
+                <span id="temperatura" class="font-mono text-gray-800 text-right"></span>
+            </div>
+        </div>
+        <div class="text-center mt-6 text-xs text-gray-400">
+            <p>Datos actualizados al <span id="updateTime"></span></p>
+        </div>
+    </div>
+
+    <div id="error" class="hidden text-center p-6 bg-red-100 rounded-2xl shadow-lg">
+        <h2 class="text-2xl font-bold text-red-700">Error</h2>
+        <p id="errorMessage" class="mt-2 text-red-600"></p>
+    </div>
+
+    <script>
+        // --- CONFIGURACIÓN ---
+        // PEGA AQUÍ EL ENLACE .CSV QUE OBTUVISTE DE GOOGLE SHEETS
+        const GOOGLE_SHEET_URL = 'AQUI_VA_TU_ENLACE_CSV_DE_GOOGLE_SHEETS';
+
+        // --- LÓGICA DE LA PÁGINA ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            const loadingDiv = document.getElementById('loading');
+            const cardDiv = document.getElementById('card');
+            const errorDiv = document.getElementById('error');
+            const errorMessageP = document.getElementById('errorMessage');
+
+            try {
+                if (GOOGLE_SHEET_URL === 'AQUI_VA_TU_ENLACE_CSV_DE_GOOGLE_SHEETS') {
+                    throw new Error('Por favor, configura la URL de Google Sheets en el archivo ficha.html.');
+                }
+
+                const params = new URLSearchParams(window.location.search);
+                const id = params.get('id');
+
+                if (!id) {
+                    throw new Error('No se especificó un ID de silo bolsa en la URL. (Ej: ?id=SB-001)');
+                }
+
+                const response = await fetch(GOOGLE_SHEET_URL);
+                if (!response.ok) {
+                    throw new Error('No se pudo acceder a la base de datos.');
+                }
+                const csvData = await response.text();
+                const rows = csvData.split('\n').map(row => row.trim());
+                const headers = rows[0].split(',').map(h => h.trim());
+                const data = rows.slice(1);
+
+                const siloRow = data.find(row => row.split(',')[0].trim() === id);
+
+                if (!siloRow) {
+                    throw new Error(`No se encontró ningún silo con el ID "${id}".`);
+                }
+
+                const siloData = siloRow.split(',');
+                const silo = {
+                    id: siloData[0].trim(),
+                    carga: siloData[1].trim(),
+                    cierre: siloData[2].trim(),
+                    humedad: siloData[3].trim(),
+                    temperatura: siloData[4].trim(),
+                };
+
+                // Formatear fechas para mejor visualización
+                const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
+                const [fechaCargaStr, horaCargaStr] = silo.carga.split(' ');
+                const [diaCarga, mesCarga, anioCarga] = fechaCargaStr.split('/');
+                const fechaCargaObj = new Date(`${anioCarga}-${mesCarga}-${diaCarga}T${horaCargaStr}`);
+
+                let fechaCierreObj = null;
+                let duracionCargaHoras = 'N/A';
+                let diasAlmacenado = 'Aún Abierto';
+
+                if (silo.cierre) {
+                    const [fechaCierreStr, horaCierreStr] = silo.cierre.split(' ');
+                    const [diaCierre, mesCierre, anioCierre] = fechaCierreStr.split('/');
+                    fechaCierreObj = new Date(`${anioCierre}-${mesCierre}-${diaCierre}T${horaCierreStr}`);
+                    
+                    // Calcular duración de la carga
+                    const diffMsCarga = fechaCierreObj - fechaCargaObj;
+                    duracionCargaHoras = (diffMsCarga / (1000 * 60 * 60)).toFixed(2) + ' horas';
+
+                    // Calcular días almacenado
+                    const diffMsAlmacenado = new Date() - fechaCierreObj;
+                    diasAlmacenado = Math.floor(diffMsAlmacenado / (1000 * 60 * 60 * 24));
+                }
+                
+                // Poblar la tarjeta
+                document.getElementById('siloId').textContent = silo.id;
+                document.getElementById('fechaCarga').textContent = fechaCargaObj.toLocaleDateString('es-ES', options);
+                document.getElementById('fechaCierre').textContent = fechaCierreObj ? fechaCierreObj.toLocaleDateString('es-ES', options) : '---';
+                document.getElementById('duracionCarga').textContent = duracionCargaHoras;
+                document.getElementById('diasAlmacenado').textContent = diasAlmacenado;
+                document.getElementById('humedad').textContent = `${silo.humedad}%`;
+                document.getElementById('temperatura').textContent = `${silo.temperatura}°C`;
+                document.getElementById('updateTime').textContent = new Date().toLocaleString('es-ES');
+
+                loadingDiv.classList.add('hidden');
+                cardDiv.classList.remove('hidden');
+
+            } catch (err) {
+                loadingDiv.classList.add('hidden');
+                errorMessageP.textContent = err.message;
+                errorDiv.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
