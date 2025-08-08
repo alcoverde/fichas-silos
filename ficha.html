@@ -26,6 +26,11 @@
             <p id="siloId" class="text-5xl font-bold text-green-600 mt-2"></p>
         </div>
         
+        <!-- NUEVO: Campo de Estado -->
+        <div id="estadoSilo" class="text-center p-3 rounded-lg mb-4 text-2xl font-bold">
+            <span id="estadoSiloText"></span>
+        </div>
+
         <div class="space-y-4 text-lg">
             <div class="flex justify-between">
                 <span class="font-bold text-gray-600">Fecha y Hora de Carga:</span>
@@ -53,6 +58,16 @@
                 <span class="font-bold text-gray-600">Temperatura (°C):</span>
                 <span id="temperatura" class="font-mono text-gray-800 text-right"></span>
             </div>
+            <!-- NUEVO: Campo de Peso -->
+            <div class="flex justify-between">
+                <span class="font-bold text-gray-600">Peso del silo (Tn):</span>
+                <span id="peso" class="font-mono text-gray-800 text-right"></span>
+            </div>
+             <!-- NUEVO: Campo de Fecha de Consumo -->
+            <div class="flex justify-between">
+                <span class="font-bold text-gray-600">Fecha de Consumo:</span>
+                <span id="fechaConsumo" class="font-mono text-gray-800 text-right"></span>
+            </div>
         </div>
         <div class="text-center mt-6 text-xs text-gray-400">
             <p>Datos actualizados al <span id="updateTime"></span></p>
@@ -65,88 +80,99 @@
     </div>
 
     <script>
-        // --- CONFIGURACIÓN ---
         const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-dldYiOlQ4znCOEb7gq1fi70lDOvAypidoaKGFjg0JBAdrWQVkyP3QLPX-YpXqdGLI8XsaWIz3ry6/pub?gid=0&single=true&output=csv';
 
-        // --- LÓGICA DE LA PÁGINA ---
         document.addEventListener('DOMContentLoaded', async () => {
             const loadingDiv = document.getElementById('loading');
             const cardDiv = document.getElementById('card');
             const errorDiv = document.getElementById('error');
             const errorMessageP = document.getElementById('errorMessage');
 
+            function parseDate(dateString) {
+                if (!dateString || dateString.trim() === '') return null;
+                const parts = dateString.trim().split(' ');
+                const fechaStr = parts[0];
+                const horaStr = parts[1] || '00:00';
+                const fechaParts = fechaStr.split('/');
+                if (fechaParts.length !== 3) return null; 
+                const horaParts = horaStr.split(':');
+                if (horaParts.length < 2) return null;
+                const [dia, mes, anio] = fechaParts;
+                const [hora, minuto] = horaParts;
+                const dateObj = new Date(anio, mes - 1, dia, hora, minuto);
+                if (isNaN(dateObj.getTime())) return null;
+                return dateObj;
+            }
+
             try {
                 const params = new URLSearchParams(window.location.search);
                 const id = params.get('id');
 
-                if (!id) {
-                    throw new Error('No se especificó un ID de silo bolsa en la URL. (Ej: ?id=SB-001)');
-                }
-
+                if (!id) throw new Error('No se especificó un ID de silo bolsa en la URL. (Ej: ?id=SB-001)');
+                
                 const response = await fetch(GOOGLE_SHEET_URL);
-                if (!response.ok) {
-                    throw new Error('No se pudo acceder a la base de datos.');
-                }
+                if (!response.ok) throw new Error('No se pudo acceder a la base de datos.');
+                
                 const csvData = await response.text();
                 const rows = csvData.split('\n').map(row => row.trim());
                 const data = rows.slice(1);
-
                 const siloRow = data.find(row => row.split(',')[0].trim() === id);
 
-                if (!siloRow) {
-                    throw new Error(`No se encontró ningún silo con el ID "${id}".`);
-                }
+                if (!siloRow) throw new Error(`No se encontró ningún silo con el ID "${id}".`);
 
                 const siloData = siloRow.split(',');
                 
+                // --- CORRECCIÓN FINAL AQUÍ ---
+                // Leemos los datos de las columnas en el orden correcto
                 const silo = {
-                    id: siloData[0].trim(),
-                    carga: siloData[1].trim(),
-                    cierre: siloData[2].trim(),
-                    temperatura: siloData[3].trim(),
-                    humedad: siloData[4].trim(),
+                    id: siloData[0] ? siloData[0].trim() : '',          // Columna A
+                    carga: siloData[1] ? siloData[1].trim() : '',       // Columna B
+                    cierre: siloData[2] ? siloData[2].trim() : '',      // Columna C
+                    humedad: siloData[3] ? siloData[3].trim() : 'N/A',  // Columna D
+                    temperatura: siloData[4] ? siloData[4].trim() : 'N/A', // Columna E
+                    peso: siloData[5] ? siloData[5].trim() : 'N/A',     // Columna F
+                    consumo: siloData[6] ? siloData[6].trim() : ''      // Columna G
                 };
 
-                // --- CORRECCIÓN DE ZONA HORARIA AQUÍ ---
-                const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
+                const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false };
                 
-                const partsCarga = silo.carga.split(' ');
-                const fechaCargaStr = partsCarga[0];
-                const horaCargaStr = partsCarga[1] || '00:00';
-                const [diaCarga, mesCarga, anioCarga] = fechaCargaStr.split('/');
-                const [horaCarga, minutoCarga] = horaCargaStr.split(':');
-                // Se crea la fecha usando componentes para forzar la hora local
-                const fechaCargaObj = new Date(anioCarga, mesCarga - 1, diaCarga, horaCarga, minutoCarga);
+                const fechaCargaObj = parseDate(silo.carga);
+                const fechaCierreObj = parseDate(silo.cierre);
+                const fechaConsumoObj = parseDate(silo.consumo);
 
-                let fechaCierreObj = null;
+                if (!fechaCargaObj) throw new Error(`La fecha de carga "${silo.carga}" tiene un formato inválido.`);
+
                 let duracionCargaHoras = 'N/A';
                 let diasAlmacenado = 'Aún Abierto';
 
-                if (silo.cierre) {
-                    const partsCierre = silo.cierre.split(' ');
-                    const fechaCierreStr = partsCierre[0];
-                    const horaCierreStr = partsCierre[1] || '00:00';
-                    const [diaCierre, mesCierre, anioCierre] = fechaCierreStr.split('/');
-                    const [horaCierre, minutoCierre] = horaCierreStr.split(':');
-                    // Se crea la fecha usando componentes para forzar la hora local
-                    fechaCierreObj = new Date(anioCierre, mesCierre - 1, diaCierre, horaCierre, minutoCierre);
-                    
+                if (fechaCierreObj) {
                     const diffMsCarga = fechaCierreObj - fechaCargaObj;
                     duracionCargaHoras = (diffMsCarga / (1000 * 60 * 60)).toFixed(2) + ' horas';
-
                     const diffMsAlmacenado = new Date() - fechaCierreObj;
                     diasAlmacenado = Math.floor(diffMsAlmacenado / (1000 * 60 * 60 * 24));
                 }
                 
-                // Poblar la tarjeta
+                const estadoSiloDiv = document.getElementById('estadoSilo');
+                const estadoSiloText = document.getElementById('estadoSiloText');
+                if (fechaConsumoObj) {
+                    estadoSiloText.textContent = 'CONSUMIDO';
+                    estadoSiloDiv.classList.add('bg-gray-200', 'text-gray-700');
+                } else {
+                    estadoSiloText.textContent = 'DISPONIBLE';
+                    estadoSiloDiv.classList.add('bg-green-100', 'text-green-700');
+                }
+
+                // Poblar la tarjeta con todos los datos
                 document.getElementById('siloId').textContent = silo.id;
-                document.getElementById('fechaCarga').textContent = fechaCargaObj.toString() === 'Invalid Date' ? 'Fecha inválida' : fechaCargaObj.toLocaleDateString('es-ES', options);
-                document.getElementById('fechaCierre').textContent = fechaCierreObj ? (fechaCierreObj.toString() === 'Invalid Date' ? 'Fecha inválida' : fechaCierreObj.toLocaleDateString('es-ES', options)) : '---';
+                document.getElementById('fechaCarga').textContent = fechaCargaObj.toLocaleDateString('es-ES', options);
+                document.getElementById('fechaCierre').textContent = fechaCierreObj ? fechaCierreObj.toLocaleDateString('es-ES', options) : '---';
                 document.getElementById('duracionCarga').textContent = duracionCargaHoras;
                 document.getElementById('diasAlmacenado').textContent = diasAlmacenado;
                 document.getElementById('humedad').textContent = `${silo.humedad}%`;
                 document.getElementById('temperatura').textContent = `${silo.temperatura}°C`;
-                document.getElementById('updateTime').textContent = new Date().toLocaleString('es-ES');
+                document.getElementById('peso').textContent = `${silo.peso} Tn`;
+                document.getElementById('fechaConsumo').textContent = fechaConsumoObj ? fechaConsumoObj.toLocaleDateString('es-ES', options) : '---';
+                document.getElementById('updateTime').textContent = new Date().toLocaleString('es-ES', options);
 
                 loadingDiv.classList.add('hidden');
                 cardDiv.classList.remove('hidden');
@@ -160,3 +186,4 @@
     </script>
 </body>
 </html>
+
