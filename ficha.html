@@ -99,45 +99,49 @@
 
                 const siloData = siloRow.split(',');
                 
-                // --- CAMBIO IMPORTANTE AQUÍ ---
-                // Leemos los datos de las columnas correctas según tu estructura
                 const silo = {
-                    id: siloData[0].trim(),          // Columna 1
-                    carga: siloData[1].trim(),       // Columna 2
-                    cierre: siloData[2].trim(),      // Columna 3
-                    // siloData[3] y siloData[4] son calculados y los ignoramos
-                    humedad: siloData[5].trim(),     // Columna 6
-                    temperatura: siloData[6].trim()  // Columna 7
+                    id: siloData[0].trim(),
+                    carga: siloData[1].trim(),
+                    cierre: siloData[2].trim(),
+                    temperatura: siloData[3].trim(),
+                    humedad: siloData[4].trim(),
                 };
 
-                // Formatear fechas para mejor visualización
+                // --- CORRECCIÓN DE ZONA HORARIA AQUÍ ---
                 const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
-                const [fechaCargaStr, horaCargaStr] = silo.carga.split(' ');
+                
+                const partsCarga = silo.carga.split(' ');
+                const fechaCargaStr = partsCarga[0];
+                const horaCargaStr = partsCarga[1] || '00:00';
                 const [diaCarga, mesCarga, anioCarga] = fechaCargaStr.split('/');
-                const fechaCargaObj = new Date(`${anioCarga}-${mesCarga}-${diaCarga}T${horaCargaStr}`);
+                const [horaCarga, minutoCarga] = horaCargaStr.split(':');
+                // Se crea la fecha usando componentes para forzar la hora local
+                const fechaCargaObj = new Date(anioCarga, mesCarga - 1, diaCarga, horaCarga, minutoCarga);
 
                 let fechaCierreObj = null;
                 let duracionCargaHoras = 'N/A';
                 let diasAlmacenado = 'Aún Abierto';
 
                 if (silo.cierre) {
-                    const [fechaCierreStr, horaCierreStr] = silo.cierre.split(' ');
+                    const partsCierre = silo.cierre.split(' ');
+                    const fechaCierreStr = partsCierre[0];
+                    const horaCierreStr = partsCierre[1] || '00:00';
                     const [diaCierre, mesCierre, anioCierre] = fechaCierreStr.split('/');
-                    fechaCierreObj = new Date(`${anioCierre}-${mesCierre}-${diaCierre}T${horaCierreStr}`);
+                    const [horaCierre, minutoCierre] = horaCierreStr.split(':');
+                    // Se crea la fecha usando componentes para forzar la hora local
+                    fechaCierreObj = new Date(anioCierre, mesCierre - 1, diaCierre, horaCierre, minutoCierre);
                     
-                    // Calcular duración de la carga
                     const diffMsCarga = fechaCierreObj - fechaCargaObj;
                     duracionCargaHoras = (diffMsCarga / (1000 * 60 * 60)).toFixed(2) + ' horas';
 
-                    // Calcular días almacenado
                     const diffMsAlmacenado = new Date() - fechaCierreObj;
                     diasAlmacenado = Math.floor(diffMsAlmacenado / (1000 * 60 * 60 * 24));
                 }
                 
                 // Poblar la tarjeta
                 document.getElementById('siloId').textContent = silo.id;
-                document.getElementById('fechaCarga').textContent = fechaCargaObj.toLocaleDateString('es-ES', options);
-                document.getElementById('fechaCierre').textContent = fechaCierreObj ? fechaCierreObj.toLocaleDateString('es-ES', options) : '---';
+                document.getElementById('fechaCarga').textContent = fechaCargaObj.toString() === 'Invalid Date' ? 'Fecha inválida' : fechaCargaObj.toLocaleDateString('es-ES', options);
+                document.getElementById('fechaCierre').textContent = fechaCierreObj ? (fechaCierreObj.toString() === 'Invalid Date' ? 'Fecha inválida' : fechaCierreObj.toLocaleDateString('es-ES', options)) : '---';
                 document.getElementById('duracionCarga').textContent = duracionCargaHoras;
                 document.getElementById('diasAlmacenado').textContent = diasAlmacenado;
                 document.getElementById('humedad').textContent = `${silo.humedad}%`;
@@ -156,4 +160,3 @@
     </script>
 </body>
 </html>
-
