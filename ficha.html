@@ -66,7 +66,6 @@
 
     <script>
         // --- CONFIGURACIÓN ---
-        // Enlace a tu Google Sheet publicado como CSV
         const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-dldYiOlQ4znCOEb7gq1fi70lDOvAypidoaKGFjg0JBAdrWQVkyP3QLPX-YpXqdGLI8XsaWIz3ry6/pub?gid=0&single=true&output=csv';
 
         // --- LÓGICA DE LA PÁGINA ---
@@ -90,7 +89,6 @@
                 }
                 const csvData = await response.text();
                 const rows = csvData.split('\n').map(row => row.trim());
-                const headers = rows[0].split(',').map(h => h.trim());
                 const data = rows.slice(1);
 
                 const siloRow = data.find(row => row.split(',')[0].trim() === id);
@@ -100,12 +98,16 @@
                 }
 
                 const siloData = siloRow.split(',');
+                
+                // --- CAMBIO IMPORTANTE AQUÍ ---
+                // Leemos los datos de las columnas correctas según tu estructura
                 const silo = {
-                    id: siloData[0].trim(),
-                    carga: siloData[1].trim(),
-                    cierre: siloData[2].trim(),
-                    humedad: siloData[3].trim(),
-                    temperatura: siloData[4].trim(),
+                    id: siloData[0].trim(),          // Columna 1
+                    carga: siloData[1].trim(),       // Columna 2
+                    cierre: siloData[2].trim(),      // Columna 3
+                    // siloData[3] y siloData[4] son calculados y los ignoramos
+                    humedad: siloData[5].trim(),     // Columna 6
+                    temperatura: siloData[6].trim()  // Columna 7
                 };
 
                 // Formatear fechas para mejor visualización
@@ -154,3 +156,4 @@
     </script>
 </body>
 </html>
+
