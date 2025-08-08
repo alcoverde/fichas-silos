@@ -21,12 +21,17 @@
     </div>
 
     <div id="card" class="hidden w-full max-w-md bg-white rounded-2xl shadow-lg p-6 md:p-8">
+        <!-- NUEVO: Contenedor para el logo -->
+        <div class="flex justify-center mb-4">
+            <img src="http://googleusercontent.com/file_content/34" alt="Logo Alcogreen" class="h-12">
+        </div>
+
         <div class="text-center border-b-2 border-gray-100 pb-4 mb-4">
             <h1 class="text-2xl font-bold text-gray-800">Ficha de Identidad</h1>
             <p id="siloId" class="text-5xl font-bold text-green-600 mt-2"></p>
         </div>
         
-        <!-- NUEVO: Campo de Estado -->
+        <!-- Campo de Estado -->
         <div id="estadoSilo" class="text-center p-3 rounded-lg mb-4 text-2xl font-bold">
             <span id="estadoSiloText"></span>
         </div>
@@ -46,7 +51,7 @@
             </div>
             <hr>
             <div class="flex justify-between items-center bg-yellow-100 p-3 rounded-lg">
-                <span class="font-bold text-yellow-800">Días Almacenado (Hoy):</span>
+                <span class="font-bold text-yellow-800">Días Almacenado:</span>
                 <span id="diasAlmacenado" class="font-mono text-2xl font-bold text-yellow-900"></span>
             </div>
             <hr>
@@ -58,12 +63,12 @@
                 <span class="font-bold text-gray-600">Temperatura (°C):</span>
                 <span id="temperatura" class="font-mono text-gray-800 text-right"></span>
             </div>
-            <!-- NUEVO: Campo de Peso -->
+            <!-- Campo de Peso -->
             <div class="flex justify-between">
                 <span class="font-bold text-gray-600">Peso del silo (Tn):</span>
                 <span id="peso" class="font-mono text-gray-800 text-right"></span>
             </div>
-             <!-- NUEVO: Campo de Fecha de Consumo -->
+             <!-- Campo de Fecha de Consumo -->
             <div class="flex justify-between">
                 <span class="font-bold text-gray-600">Fecha de Consumo:</span>
                 <span id="fechaConsumo" class="font-mono text-gray-800 text-right"></span>
@@ -122,16 +127,14 @@
 
                 const siloData = siloRow.split(',');
                 
-                // --- CORRECCIÓN FINAL AQUÍ ---
-                // Leemos los datos de las columnas en el orden correcto
                 const silo = {
-                    id: siloData[0] ? siloData[0].trim() : '',          // Columna A
-                    carga: siloData[1] ? siloData[1].trim() : '',       // Columna B
-                    cierre: siloData[2] ? siloData[2].trim() : '',      // Columna C
-                    humedad: siloData[3] ? siloData[3].trim() : 'N/A',  // Columna D
-                    temperatura: siloData[4] ? siloData[4].trim() : 'N/A', // Columna E
-                    peso: siloData[5] ? siloData[5].trim() : 'N/A',     // Columna F
-                    consumo: siloData[6] ? siloData[6].trim() : ''      // Columna G
+                    id: siloData[0] ? siloData[0].trim() : '',
+                    carga: siloData[1] ? siloData[1].trim() : '',
+                    cierre: siloData[2] ? siloData[2].trim() : '',
+                    humedad: siloData[3] ? siloData[3].trim() : 'N/A',
+                    temperatura: siloData[4] ? siloData[4].trim() : 'N/A',
+                    peso: siloData[5] ? siloData[5].trim() : 'N/A',
+                    consumo: siloData[6] ? siloData[6].trim() : ''
                 };
 
                 const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false };
@@ -148,8 +151,16 @@
                 if (fechaCierreObj) {
                     const diffMsCarga = fechaCierreObj - fechaCargaObj;
                     duracionCargaHoras = (diffMsCarga / (1000 * 60 * 60)).toFixed(2) + ' horas';
-                    const diffMsAlmacenado = new Date() - fechaCierreObj;
+                    
+                    let fechaFinalCalculo;
+                    if (fechaConsumoObj) {
+                        fechaFinalCalculo = fechaConsumoObj;
+                    } else {
+                        fechaFinalCalculo = new Date();
+                    }
+                    const diffMsAlmacenado = fechaFinalCalculo - fechaCierreObj;
                     diasAlmacenado = Math.floor(diffMsAlmacenado / (1000 * 60 * 60 * 24));
+                    if (diasAlmacenado < 0) diasAlmacenado = 0;
                 }
                 
                 const estadoSiloDiv = document.getElementById('estadoSilo');
@@ -162,7 +173,6 @@
                     estadoSiloDiv.classList.add('bg-green-100', 'text-green-700');
                 }
 
-                // Poblar la tarjeta con todos los datos
                 document.getElementById('siloId').textContent = silo.id;
                 document.getElementById('fechaCarga').textContent = fechaCargaObj.toLocaleDateString('es-ES', options);
                 document.getElementById('fechaCierre').textContent = fechaCierreObj ? fechaCierreObj.toLocaleDateString('es-ES', options) : '---';
